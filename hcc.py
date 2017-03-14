@@ -62,6 +62,8 @@ EDITS_ON = True
 #    3 - BOTH DIB AND ESRD
 
 from enum import Enum 
+from datetime import datetime
+
 class EntitlemenReason(Enum):
   OASI=0
   DIB=1
@@ -88,7 +90,7 @@ class Beneficiary:
               newenrollee_medicaid=False,):
     self.hicno = hicno
     self.sex = sex
-    self.dob = dob
+    self.dob = datetime.strptime(dob,"%Y%m%d")
     self.medicaid = medicaid
     self.newenrollee_medicaid = newenrollee_medicaid
     self.original_reason_entitlement = original_reason_entitlement
@@ -97,17 +99,49 @@ class Beneficiary:
   def add_diagnosis(self,diag):
     self.diagnoses.append(diag)
 
+  # date_as_of in YYYYmmdd format
+  def age_as_of(self,date_as_of):
+    return date_as_of.year - self.dob.year - ((date_as_of.month, date_as_of.day) < (self.dob.month, self.dob.day))
+
 def score_beneficiaries(bene):
+  results = []
   for b in bene:
     for d in b.diagnoses:
-      print("eu")
+      edit_diagnosis(b,d)
+      create_category_coding(d)
+      print("eu",b.age_as_of(datetime.today()))
+    create_demographics(b)
+    create_hcc(b)
+    create_interactions(b)
+    create_disabled_interactions(b)
+    scores = score(b)
+    results.append( (b,scores) )
+
+
+def score(b):
+  (23,34,44) 
+
 
 def edit_diagnosis(beneficiary,diagnosis):
   if EDITS_ON:
     print("editing digansis")
     
+def create_category_coding(d):
+  ""
 
-x = Beneficiary("eu",232,34)
+def create_hcc(beneficiary):
+  ""
+
+def create_demographics(bene):
+  ""
+
+def create_interactions(bene):
+  ""
+
+def create_disabled_interactions(bene):
+  ""
+
+x = Beneficiary("eu",232,"19430302")
 x.add_diagnosis(Diagnosis("343",ICDType.TEN))
 x.add_diagnosis(Diagnosis("234",ICDType.TEN))
 score_beneficiaries([x])
