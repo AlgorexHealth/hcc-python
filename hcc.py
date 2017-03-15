@@ -34,6 +34,13 @@
 
 # bene is a class
 EDITS_ON = True
+
+CC_LOOKUP = {}
+
+def load_CC_LOOKUP():
+  return CC_LOOKUP
+
+
 #    
 #    Data requirements for the SAS input files. The variable
 #    names listed are required by the programs as written:
@@ -74,7 +81,6 @@ class ICDType(Enum):
   NINE = 9
   TEN = 0
 
-
 class Diagnosis:
   def __init__(self,
               icdcode,
@@ -103,12 +109,17 @@ class Beneficiary:
   def age_as_of(self,date_as_of):
     return date_as_of.year - self.dob.year - ((date_as_of.month, date_as_of.day) < (self.dob.month, self.dob.day))
 
+  def set_cc(self,ccs):
+    self.ccs = ccs
+
+# bene should be an array of Beneficiary objects with
+# multiple Diagnosis objects attached
 def score_beneficiaries(bene):
   results = []
   for b in bene:
     for d in b.diagnoses:
       edit_diagnosis(b,d)
-      create_category_coding(d)
+      create_category_coding(b,d)
       print("eu",b.age_as_of(datetime.today()))
     create_demographics(b)
     create_hcc(b)
@@ -116,18 +127,27 @@ def score_beneficiaries(bene):
     create_disabled_interactions(b)
     scores = score(b)
     results.append( (b,scores) )
+  return results
 
+def output_beneficiaries(beneficiary_scores_tuple):
+  for b,scores in beneficiary_scores_tuple:
+    print("eu")
 
 def score(b):
   (23,34,44) 
-
 
 def edit_diagnosis(beneficiary,diagnosis):
   if EDITS_ON:
     print("editing digansis")
     
-def create_category_coding(d):
-  ""
+def create_category_coding(b,d):
+  if not CC_LOOKUP:
+    load_CC_LOOKUP()
+  key = (d.icdcode,d.codetype)
+  if key in CC_LOOKUP:
+    ccs = CC_LOOKUP[key]
+    b.set_cc(ccs)
+  return b
 
 def create_hcc(beneficiary):
   ""
@@ -141,9 +161,13 @@ def create_interactions(bene):
 def create_disabled_interactions(bene):
   ""
 
-x = Beneficiary("eu",232,"19430302")
-x.add_diagnosis(Diagnosis("343",ICDType.TEN))
-x.add_diagnosis(Diagnosis("234",ICDType.TEN))
-score_beneficiaries([x])
+def load_beneficiary_with_diagnoses(filz):
+  x = Beneficiary("eu",232,"19430302")
+  x.add_diagnosis(Diagnosis("343",ICDType.TEN))
+  x.add_diagnosis(Diagnosis("234",ICDType.TEN))
+  return [x]
 
+beneficiaries = load_beneficiary_with_diagnoses("somefile")
+score_bene_tuples = score_beneficiaries(beneficiaries)
+output_beneficiaries(score_bene_tuples)
 
