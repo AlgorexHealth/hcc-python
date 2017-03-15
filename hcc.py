@@ -36,6 +36,12 @@
 EDITS_ON = True
 
 CC_LOOKUP = {}
+LR_COEFFICIENTS = {"institutional":{},
+                    "new_enrollee":{},
+                    "community":{}}
+
+def load_LR_COEFFICIENTS():
+  return CC_LOOKUP
 
 def load_CC_LOOKUP():
   return CC_LOOKUP
@@ -69,6 +75,7 @@ def load_CC_LOOKUP():
 #    3 - BOTH DIB AND ESRD
 
 from enum import Enum 
+from functools import reduce
 from datetime import datetime
 
 class EntitlemenReason(Enum):
@@ -118,10 +125,9 @@ def score_beneficiaries(bene):
   results = []
   for b in bene:
     for d in b.diagnoses:
-      edit_diagnosis(b,d)
-      create_category_coding(b,d)
-      print("eu",b.age_as_of(datetime.today()))
-    create_demographics(b)
+      edit_diagnosis(b,d) # either &EDITMAC9 or &EDITMAC0
+      create_category_coding(b,d) # INPUT(LEFT(PUT(DIAG,$I9&FMNAME9..)),4.)  -- as an example
+    create_demographics(b)  #  &AGESEXMAC(AGEF=AGEF, SEX=SEX, OREC=OREC)
     create_hcc(b)
     create_interactions(b)
     create_disabled_interactions(b)
@@ -131,15 +137,21 @@ def score_beneficiaries(bene):
 
 def output_beneficiaries(beneficiary_scores_tuple):
   for b,scores in beneficiary_scores_tuple:
-    print("eu")
+    print("beneficiary",b.dob)
 
 def score(b):
+  def reducer( val_and_coefficient, score):
+    return score
+  reduce(reducer,[],0)
   (23,34,44) 
 
 def edit_diagnosis(beneficiary,diagnosis):
   if EDITS_ON:
     print("editing digansis")
     
+# Category Codings are assigned to the Beneficiary (as a rollup)
+# and not the diagnosis, as multiple diagnoses in the same category
+# are compressed into one category
 def create_category_coding(b,d):
   if not CC_LOOKUP:
     load_CC_LOOKUP()
@@ -152,6 +164,9 @@ def create_category_coding(b,d):
 def create_hcc(beneficiary):
   ""
 
+# put people into buckets
+# based on their age
+# also set originalds and disabled
 def create_demographics(bene):
   ""
 
