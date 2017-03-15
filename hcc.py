@@ -1,12 +1,15 @@
-
+ #####################################
+ #  The following is a set of comments copied from SAS code
+ #  which will be used to guide the structure of this python code
+ # -----------------------------------
  # Program steps:
- #         step1: include external macros
- #         step2: define internal macro variables
- #         step3: merge person and diagnosis files outputting one
- #                record per person for each input person level record
- #         step3.1: declaration section
- #         step3.2: bring regression coefficients
- #         step3.3: merge person and diagnosis file
+ #X        step1: include external macros
+ #X        step2: define internal macro variables
+ #X        step3: merge person and diagnosis files outputting one
+ #X               record per person for each input person level record
+ #X        step3.1: declaration section
+ #X        step3.2: bring regression coefficients
+ #X        step3.3: merge person and diagnosis file
  #         step3.4: for the first record for a person set CC to 0
  #                  and calculate age
  #         step3.5: if there are any diagnoses for a person
@@ -29,6 +32,142 @@
  #                   - create score for new enrollee model
  #                   - normalize score if needed
 
+# bene is a class
+EDITS_ON = True
 
+CC_LOOKUP = {}
+
+def load_CC_LOOKUP():
+  return CC_LOOKUP
+
+
+#    
+#    Data requirements for the SAS input files. The variable
+#    names listed are required by the programs as written:
+#    1) PERSON file
+#    x HICNO (or other person identification variable. It
+#    must be set in the macro variable IDVAR)
+#    -character or numeric type and unique to an individual
+#    x SEX
+#    -one character, 1=male; 2=female
+#    x DOB
+#    - SAS date format, date of birth
+#    x MCAID
+#    -numeric, =1 if number of months in Medicaid in base
+#    year >0,
+#    =0 otherwise
+#    x NEMCAID
+#    -numeric, =1 if a new Medicare enrollee and number of
+#    months in Medicaid in payment year >0;
+#    =0 otherwise
+#    x OREC
+#    -one character, original reason for entitlement with
+#    the following values:
+#    0 - OLD AGE (OASI)
+#    1 - DISABILITY (DIB)
+#    2 – ESRD
+#    3 - BOTH DIB AND ESRD
+
+from enum import Enum 
+from datetime import datetime
+
+class EntitlemenReason(Enum):
+  OASI=0
+  DIB=1
+  ESRD=2
+  DIB_AND_ESRD = 3
+
+class ICDType(Enum):
+  NINE = 9
+  TEN = 0
+
+class Diagnosis:
+  def __init__(self,
+              icdcode,
+              codetype=ICDType.NINE):
+    self.icdcode = icdcode
+    self.codetype = codetype
+
+class Beneficiary:
+  def __init__(self,
+              hicno,sex,dob,
+              original_reason_entitlement=EntitlemenReason.OASI,
+              medicaid=False,
+              newenrollee_medicaid=False,):
+    self.hicno = hicno
+    self.sex = sex
+    self.dob = datetime.strptime(dob,"%Y%m%d")
+    self.medicaid = medicaid
+    self.newenrollee_medicaid = newenrollee_medicaid
+    self.original_reason_entitlement = original_reason_entitlement
+    self.diagnoses = []
+
+  def add_diagnosis(self,diag):
+    self.diagnoses.append(diag)
+
+  # date_as_of in YYYYmmdd format
+  def age_as_of(self,date_as_of):
+    return date_as_of.year - self.dob.year - ((date_as_of.month, date_as_of.day) < (self.dob.month, self.dob.day))
+
+  def set_cc(self,ccs):
+    self.ccs = ccs
+
+# bene should be an array of Beneficiary objects with
+# multiple Diagnosis objects attached
 def score_beneficiaries(bene):
+  results = []
+  for b in bene:
+    for d in b.diagnoses:
+      edit_diagnosis(b,d)
+      create_category_coding(b,d)
+      print("eu",b.age_as_of(datetime.today()))
+    create_demographics(b)
+    create_hcc(b)
+    create_interactions(b)
+    create_disabled_interactions(b)
+    scores = score(b)
+    results.append( (b,scores) )
+  return results
+
+def output_beneficiaries(beneficiary_scores_tuple):
+  for b,scores in beneficiary_scores_tuple:
+    print("eu")
+
+def score(b):
+  (23,34,44) 
+
+def edit_diagnosis(beneficiary,diagnosis):
+  if EDITS_ON:
+    print("editing digansis")
+    
+def create_category_coding(b,d):
+  if not CC_LOOKUP:
+    load_CC_LOOKUP()
+  key = (d.icdcode,d.codetype)
+  if key in CC_LOOKUP:
+    ccs = CC_LOOKUP[key]
+    b.set_cc(ccs)
+  return b
+
+def create_hcc(beneficiary):
+  ""
+
+def create_demographics(bene):
+  ""
+
+def create_interactions(bene):
+  ""
+
+def create_disabled_interactions(bene):
+  ""
+
+def load_beneficiary_with_diagnoses(filz):
+  x = Beneficiary("eu",232,"19430302")
+  x.add_diagnosis(Diagnosis("343",ICDType.TEN))
+  x.add_diagnosis(Diagnosis("234",ICDType.TEN))
+  return [x]
+
+beneficiaries = load_beneficiary_with_diagnoses("somefile")
+score_bene_tuples = score_beneficiaries(beneficiaries)
+output_beneficiaries(score_bene_tuples)
 
