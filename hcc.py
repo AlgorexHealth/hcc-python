@@ -46,7 +46,7 @@ class Beneficiary(pyDatalog.Mixin):
     self.diagnoses = []
 
   def __repr__(self): # specifies how to display an Employee
-    return str(self.hicno)
+    return "ID:" + str(self.hicno) + ",DOB:" + str(self.dob)
 
   def add_diagnosis(self,diag):
     self.diagnoses.append(diag)
