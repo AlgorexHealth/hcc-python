@@ -64,19 +64,19 @@ def load_diagnostic_category_facts():
           ("compl",["176"]),
           ("pressure_ulcer",["157","158","159","160"]),
           ("sepsis",["2"]) ]
-  for dc, ccs in diagnostic_categories:
-    for cc in ccs:
-      pyDatalog.assert_fact('dc',dc,cc)
+  for dcE, ccs in diagnostic_categories:
+    for ccE in ccs:
+      + dc(dcE,ccE)
 
 def load_cc_facts(f,icdcodetype):
   file = open(f, 'r')                                     
   for line in file:
     vals = line.split()
     if len(vals) == 2:
-      icd,cc = vals
+      icdE,ccE = vals
     elif len(vals) == 3:
-      icd,cc,_ = vals
-    pyDatalog.assert_fact('cc',icd,cc,icdcodetype) 
+      icdE,ccE,_ = vals
+    + cc(icdE,ccE,icdcodetype) 
 
 def load_hcc_facts():
   overriders = [
@@ -238,9 +238,8 @@ def load_rules():
   originally_disabled(B) <= (Ben.original_reason_entitlement[B] == EntitlementReason.DIB) & ~(disabled(B))
 
   beneficiary_icd(B,ICD,Type) <= (Diag.beneficiary[D] == B) & (Diag.icdcode[D]==ICD) & (Diag.codetype[D]==Type) 
-  beneficiary_has_cc(B,CC) <= (Diag.beneficiary[D] == B)  & edit(Diag.icdcode[D],Diag.codetype[D],B,CC)
-  beneficiary_has_cc(B,CC) <= (Diag.beneficiary[D] == B)  & cc(Diag.icdcode[D],CC,
-                                        Diag.codetype[D]) & ~(edit(Diag.icdcode[D],Diag.codetype[D],B,CC2))
+  beneficiary_has_cc(B,CC) <= beneficiary_icd(B,ICD,Type)  & edit(ICD,Type,B,CC)
+  beneficiary_has_cc(B,CC) <= beneficiary_icd(B,ICD,Type)  & cc(ICD,CC,Type) & ~(edit(ICD,Type,B,CC2))
 
   has_cc_that_overrides_this_one(B,CC) <=  beneficiary_has_cc(B,OT)  & overrides(OT,CC)
   beneficiary_has_hcc(B,CC) <= beneficiary_has_cc(B,CC) & ~( has_cc_that_overrides_this_one(B,CC))
