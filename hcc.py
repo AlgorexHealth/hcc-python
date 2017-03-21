@@ -144,13 +144,9 @@ def community_regression():
   "MCAID_Female_Aged","MCAID_Female_Disabled",
   "MCAID_Male_Aged","MCAID_Male_Disabled",
   "OriginallyDisabled_Female","OriginallyDisabled_Male",
-  "DISABLED_HCC6", "DISABLED_HCC34",
-  "DISABLED_HCC46","DISABLED_HCC54",
-  "DISABLED_HCC55","DISABLED_HCC110",
-  "DISABLED_HCC176", "SEPSIS_CARD_RESP_FAIL",
-  "CANCER_IMMUNE", "DIABETES_CHF",
-  "CHF_COPD","CHF_RENAL",
-  "COPD_CARD_RESP_FAIL",
+  "DISABLED_HCC6", "DISABLED_HCC34", "DISABLED_HCC46","DISABLED_HCC54",
+  "DISABLED_HCC55","DISABLED_HCC110", "DISABLED_HCC176", "SEPSIS_CARD_RESP_FAIL",
+  "CANCER_IMMUNE", "DIABETES_CHF", "CHF_COPD","CHF_RENAL", "COPD_CARD_RESP_FAIL",
   "HCC1","HCC2","HCC6","HCC8","HCC9","HCC10", "HCC11", "HCC12", 
   "HCC17", "HCC18", "HCC19", "HCC21", "HCC22", "HCC23", "HCC27", "HCC28",
   "HCC29", "HCC33", "HCC34", "HCC35", "HCC39", "HCC40", "HCC46", "HCC47", 
@@ -188,21 +184,11 @@ def institutional_regression():
               "F70_74", "F75_79", "F80_84", "F85_89", "F90_94", "F95_GT",
               "M0_34","M35_44", "M45_54", "M55_59", "M60_64", "M65_69",
               "M70_74", "M75_79", "M80_84", "M85_89", "M90_94", "M95_GT",
-              "MCAID","ORIGDS",
-              "DISABLED_HCC85", "DISABLED_PRESSURE_ULCER",
-              "DISABLED_HCC161","DISABLED_HCC39",
-              "DISABLED_HCC77", "DISABLED_HCC6",
-              "CHF_COPD", "COPD_CARD_RESP_FAIL",
-              "SEPSIS_PRESSURE_ULCER",
-              "SEPSIS_ARTIF_OPENINGS",
-              "ART_OPENINGS_PRESSURE_ULCER",
-              "DIABETES_CHF",
-              "COPD_ASP_SPEC_BACT_PNEUM",
-              "ASP_SPEC_BACT_PNEUM_PRES_ULC",
-              "SEPSIS_ASP_SPEC_BACT_PNEUM",
-              "SCHIZOPHRENIA_COPD",
-              "SCHIZOPHRENIA_CHF",
-              "SCHIZOPHRENIA_SEIZURES",
+              "MCAID","ORIGDS", "DISABLED_HCC85", "DISABLED_PRESSURE_ULCER",
+              "DISABLED_HCC161","DISABLED_HCC39", "DISABLED_HCC77", "DISABLED_HCC6",
+              "CHF_COPD", "COPD_CARD_RESP_FAIL", "SEPSIS_PRESSURE_ULCER", "SEPSIS_ARTIF_OPENINGS",
+              "ART_OPENINGS_PRESSURE_ULCER", "DIABETES_CHF", "COPD_ASP_SPEC_BACT_PNEUM", "ASP_SPEC_BACT_PNEUM_PRES_ULC",
+              "SEPSIS_ASP_SPEC_BACT_PNEUM", "SCHIZOPHRENIA_COPD", "SCHIZOPHRENIA_CHF", "SCHIZOPHRENIA_SEIZURES",
               "HCC1","HCC2","HCC6","HCC8","HCC9","HCC10", "HCC11", "HCC12", 
               "HCC17", "HCC18", "HCC19", "HCC21", "HCC22", "HCC23", "HCC27", "HCC28",
               "HCC29", "HCC33", "HCC34", "HCC35", "HCC39", "HCC40", "HCC46", "HCC47", 
@@ -216,7 +202,7 @@ def institutional_regression():
               "HCC169","HCC170","HCC173","HCC176","HCC186","HCC188","HCC189" ]
   return reg_vars 
 
-pyDatalog.create_terms('beneficiary_icd,CC,B,valid_community_variables,valid_institutional_variables,valid_new_enrolle_variables,indicator')
+pyDatalog.create_terms('excised,beneficiary_icd,CC,B,valid_community_variables,valid_institutional_variables,valid_new_enrolle_variables,indicator')
 
 
 def load_rules():
@@ -237,27 +223,29 @@ def load_rules():
   #    ORIGDS  = (&OREC = '1')*(DISABL = 0);
   originally_disabled(B) <= (Ben.original_reason_entitlement[B] == EntitlementReason.DIB) & ~(disabled(B))
 
-  beneficiary_icd(B,ICD,Type) <= (Diag.beneficiary[D] == B) & (Diag.icdcode[D]==ICD) & (Diag.codetype[D]==Type) 
-  beneficiary_has_cc(B,CC) <= beneficiary_icd(B,ICD,Type)  & edit(ICD,Type,B,CC)
-  beneficiary_has_cc(B,CC) <= beneficiary_icd(B,ICD,Type)  & cc(ICD,CC,Type) & ~(edit(ICD,Type,B,CC2))
-
-  has_cc_that_overrides_this_one(B,CC) <=  beneficiary_has_cc(B,OT)  & overrides(OT,CC)
-  beneficiary_has_hcc(B,CC) <= beneficiary_has_cc(B,CC) & ~( has_cc_that_overrides_this_one(B,CC))
-
-  ben_hcc(B,CC) <= beneficiary_has_hcc(B,CC)
-
   edit(ICD,9,B,"48")  <= female(B) & (ICD.in_(["2860", "2861"]))
   edit(ICD,9,B,"112") <= (Ben.age[B] < 18) & (ICD.in_(["4910", "4911", "49120", "49121", "49122",
                               "4918", "4919", "4920",  "4928",  "496",  
                               "5181", "5182"]))
-  #IF &AGE < 18 AND &ICD9 IN ("49320", "49321", "49322") 
-  #                                           THEN CC="-1.0";
-
   edit(ICD,0,B,"48")  <= female(B) & (ICD.in_(["D66", "D67"]))
   edit(ICD,0,B,"112") <= (Ben.age[B] < 18) & (ICD.in_(["J410", 
                                  "J411", "J418", "J42",  "J430",
                                  "J431", "J432", "J438", "J439", "J440",
                                  "J441", "J449", "J982", "J983"]))
+
+  #IF &AGE < 18 AND &ICD9 IN ("49320", "49321", "49322") 
+  #                                           THEN CC="-1.0";
+  excised(ICD,9,B) <= (Ben.age[B] < 18) & (ICD.in_(["49320", "49321", "49322"]))
+
+  beneficiary_icd(B,ICD,Type) <= (Diag.beneficiary[D] == B) & (Diag.icdcode[D]==ICD) & (Diag.codetype[D]==Type) 
+  beneficiary_has_cc(B,CC) <= beneficiary_icd(B,ICD,Type)  & edit(ICD,Type,B,CC) & ~(excised(ICD,Type,B))
+  beneficiary_has_cc(B,CC) <= beneficiary_icd(B,ICD,Type)  & \
+    cc(ICD,CC,Type) & ~(edit(ICD,Type,B,CC2)) & ~(excised(ICD,Type,B))
+
+  has_cc_that_overrides_this_one(B,CC) <=  beneficiary_has_cc(B,OT)  & overrides(OT,CC)
+  beneficiary_has_hcc(B,CC) <= beneficiary_has_cc(B,CC) & ~( has_cc_that_overrides_this_one(B,CC))
+
+  ben_hcc(B,CC) <= beneficiary_has_hcc(B,CC)
 
   # lines 363 - 368
   sepsis_card_resp_fail(CC,CC2) <= dc("sepsis",CC) & dc("card_resp_fail",CC2)
@@ -454,6 +442,15 @@ bob = Beneficiary(3,"male","20040824",EntitlementReason.DIB,True)
 bob.add_diagnosis(Diagnosis(bob,"A0223",ICDType.TEN))
 bob.add_diagnosis(Diagnosis(bob,"A0224",ICDType.TEN))
 jacob = Beneficiary(4,"male","1940824",EntitlementReason.DIB,True)
+
+antonio = Beneficiary(3,"male","20040824",EntitlementReason.DIB,True)
+antonio.add_diagnosis(Diagnosis(antonio,"A0223",ICDType.TEN))
+antonio.add_diagnosis(Diagnosis(antonio,"49320",ICDType.NINE))
+
+
+john = Beneficiary(3,"male","19920824",EntitlementReason.DIB,True)
+john.add_diagnosis(Diagnosis(john,"A0223",ICDType.TEN))
+john.add_diagnosis(Diagnosis(john,"49320",ICDType.NINE))
 
 print("bottom")
 
