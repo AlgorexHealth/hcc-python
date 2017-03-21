@@ -68,6 +68,14 @@ def load_diagnostic_category_facts():
     for ccE in ccs:
       + dc(dcE,ccE)
 
+def load_coefficients(f):
+  file = open(f, 'r')                                     
+  for line in file:
+    vals = list(map(lambda s: s.strip(),line.split(",")))
+    label,coeff = vals
+    + coefficient(label,float(coeff)) 
+  + coefficient('starting',0.00)
+
 def load_cc_facts(f,icdcodetype):
   file = open(f, 'r')                                     
   for line in file:
@@ -123,7 +131,7 @@ def load_hcc_facts():
     for overridee in overridees:
       + overrides(overrider,overridee)
 
-pyDatalog.create_terms('b,dc,overrides,has_cc_that_overrides_this_one,beneficiary_has_hcc,Type,OT,beneficiary_has_cc,cc,CC,CC2,ICD,edit,male,B,Diag,Ben,female,medicaid,age,A,old_age_entitled,new_enrollee,D,ben_hcc')
+pyDatalog.create_terms('score_em,Score,score,Scores,NE,INS,CE,institutional_score,new_enrollee_score,community_score,Pair,Coef,coefficient,b,dc,overrides,has_cc_that_overrides_this_one,beneficiary_has_hcc,Type,OT,beneficiary_has_cc,cc,CC,CC2,ICD,edit,male,B,Diag,Ben,female,medicaid,age,A,old_age_entitled,new_enrollee,D,ben_hcc')
 
 pyDatalog.create_terms('sepsis_card_resp_fail,cancer_immune,diabetes_chf,chf_copd,chf_renal, copd_card_resp_fail')
 
@@ -134,6 +142,7 @@ def load_facts():
   load_cc_facts("icd9.txt",9)
   load_hcc_facts()
   load_diagnostic_category_facts()
+  load_coefficients("coefficients.txt")
   
 def community_regression():
   # &COMM_REG
@@ -161,7 +170,6 @@ def community_regression():
   return reg_vars
 
 def new_enrollee_regression():
-  # 
   reg_vars = ["NEF0_34","NEF35_44", "NEF45_54", "NEF55_59", "NEF60_64",
               "NEF65","NEF66","NEF67","NEF68","NEF69",
               "NEF70_74", "NEF75_79", "NEF80_84", "NEF85_89", "NEF90_94", "NEF95_GT",
@@ -179,7 +187,6 @@ def new_enrollee_regression():
   return reg_vars
 
 def institutional_regression():
-  # &INST_REG
   reg_vars = ["F0_34","F35_44", "F45_54", "F55_59", "F60_64", "F65_69",
               "F70_74", "F75_79", "F80_84", "F85_89", "F90_94", "F95_GT",
               "M0_34","M35_44", "M45_54", "M55_59", "M60_64", "M65_69",
@@ -202,7 +209,7 @@ def institutional_regression():
               "HCC169","HCC170","HCC173","HCC176","HCC186","HCC188","HCC189" ]
   return reg_vars 
 
-pyDatalog.create_terms('excised,beneficiary_icd,CC,B,valid_community_variables,valid_institutional_variables,valid_new_enrolle_variables,indicator')
+pyDatalog.create_terms('excised,beneficiary_icd,CC,B,valid_community_variables,valid_institutional_variables,valid_new_enrollee_variables,indicator')
 
 
 def load_rules():
@@ -224,9 +231,10 @@ def load_rules():
   originally_disabled(B) <= (Ben.original_reason_entitlement[B] == EntitlementReason.DIB) & ~(disabled(B))
 
   edit(ICD,9,B,"48")  <= female(B) & (ICD.in_(["2860", "2861"]))
-  edit(ICD,9,B,"112") <= (Ben.age[B] < 18) & (ICD.in_(["4910", "4911", "49120", "49121", "49122",
-                              "4918", "4919", "4920",  "4928",  "496",  
-                              "5181", "5182"]))
+  edit(ICD,9,B,"112") <= (Ben.age[B] < 18) & \
+                              (ICD.in_(["4910", "4911", "49120", "49121", "49122",
+                                        "4918", "4919", "4920",  "4928",  "496",  
+                                        "5181", "5182"]))
   edit(ICD,0,B,"48")  <= female(B) & (ICD.in_(["D66", "D67"]))
   edit(ICD,0,B,"112") <= (Ben.age[B] < 18) & (ICD.in_(["J410", 
                                  "J411", "J418", "J42",  "J430",
@@ -417,14 +425,25 @@ def load_rules():
 
   (valid_community_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(cvars)
   (valid_institutional_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(ivars)
-  (valid_new_enrolle_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(nevars)
+  (valid_new_enrollee_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(nevars)
+
+  (new_enrollee_score[B] == sum_(Coef,key=Coef)) <=  indicator(B,CC) \
+                                                & CC.in_(nevars) & coefficient("NE_"+CC,Coef)
+  (institutional_score[B] == sum_(Coef,key=Coef)) <=  indicator(B,CC) \
+                                                & CC.in_(ivars) & coefficient("INS_"+CC,Coef)
+  (community_score[B] == sum_(Coef,key=Coef)) <=  indicator(B,CC) \
+                                                & CC.in_(cvars) & coefficient("CE_"+CC,Coef)
+
+  score(B,"community",Score) <= (community_score[B] == Score)
+  score(B,"institutional",Score) <= (institutional_score[B] == Score)
+  score(B,"new_enrollee",Score) <= (new_enrollee_score[B] == Score)
+  
 
 load_facts()
 load_rules()
 
 
 ####################################################
-
 jane = Beneficiary(2,"female","19740824",EntitlementReason.DIB,True)
 jane.add_diagnosis(Diagnosis(jane,"D66",ICDType.TEN))  
 jane.add_diagnosis(Diagnosis(jane,"C182",ICDType.TEN))  
@@ -452,6 +471,7 @@ john = Beneficiary(3,"male","19920824",EntitlementReason.DIB,True)
 john.add_diagnosis(Diagnosis(john,"A0223",ICDType.TEN))
 john.add_diagnosis(Diagnosis(john,"49320",ICDType.NINE))
 
+####################################################
 print("bottom")
 
 
