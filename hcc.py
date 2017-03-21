@@ -3,12 +3,6 @@ from functools import reduce
 from datetime import datetime
 from pyDatalog import pyDatalog
 
-@pyDatalog.predicate()
-def p2(X,Y):
-    yield (1,2)
-    yield (2,3)
-    yield ("daniel",3)
-
 def age_as_of(dob,date_as_of):
   return date_as_of.year - dob.year - ((date_as_of.month, date_as_of.day) < (dob.month, dob.day))
 
@@ -35,7 +29,6 @@ class Diagnosis(pyDatalog.Mixin):
   def __repr__(self): # specifies how to display an Employee
     return str(beneficiary) + str(self.icdcode) + str(self.codetype)
 
-
 class Beneficiary(pyDatalog.Mixin):
   def __init__(self,
               hicno,sex,dob,
@@ -57,8 +50,6 @@ class Beneficiary(pyDatalog.Mixin):
 
   def add_diagnosis(self,diag):
     self.diagnoses.append(diag)
-
- 
 
 # lines 352 - 361
 def load_diagnostic_category_facts():
@@ -130,7 +121,7 @@ def load_hcc_facts():
           ]
   for overrider, overridees in overriders:
     for overridee in overridees:
-      pyDatalog.assert_fact('overrides',overrider,overridee)
+      + overrides(overrider,overridee)
 
 pyDatalog.create_terms('b,dc,overrides,has_cc_that_overrides_this_one,beneficiary_has_hcc,Type,OT,beneficiary_has_cc,cc,CC,CC2,ICD,edit,male,B,Diag,Ben,female,medicaid,age,A,old_age_entitled,new_enrollee,D,ben_hcc')
 
@@ -225,16 +216,8 @@ def institutional_regression():
               "HCC169","HCC170","HCC173","HCC176","HCC186","HCC188","HCC189" ]
   return reg_vars 
 
-pyDatalog.create_terms('CC,B,valid_community_variables,valid_institutional_variables,valid_new_enrolle_variables,indicator')
+pyDatalog.create_terms('beneficiary_icd,CC,B,valid_community_variables,valid_institutional_variables,valid_new_enrolle_variables,indicator')
 
-
-def load_score_concatenators():
-  cvars = community_regression()
-  ivars = institutional_regression()
-  nevars = new_enrollee_regression()
-  (valid_community_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(cvars)
-  (valid_institutional_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(ivars)
-  (valid_new_enrolle_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(nevars)
 
 def load_rules():
   Ben = Beneficiary
@@ -254,12 +237,22 @@ def load_rules():
   #    ORIGDS  = (&OREC = '1')*(DISABL = 0);
   originally_disabled(B) <= (Ben.original_reason_entitlement[B] == EntitlementReason.DIB) & ~(disabled(B))
 
+  beneficiary_icd(B,ICD,Type) <= (Diag.beneficiary[D] == B) & (Diag.icdcode[D]==ICD) & (Diag.codetype[D]==Type) 
   beneficiary_has_cc(B,CC) <= (Diag.beneficiary[D] == B)  & edit(Diag.icdcode[D],Diag.codetype[D],B,CC)
   beneficiary_has_cc(B,CC) <= (Diag.beneficiary[D] == B)  & cc(Diag.icdcode[D],CC,
                                         Diag.codetype[D]) & ~(edit(Diag.icdcode[D],Diag.codetype[D],B,CC2))
+
   has_cc_that_overrides_this_one(B,CC) <=  beneficiary_has_cc(B,OT)  & overrides(OT,CC)
   beneficiary_has_hcc(B,CC) <= beneficiary_has_cc(B,CC) & ~( has_cc_that_overrides_this_one(B,CC))
+
   ben_hcc(B,CC) <= beneficiary_has_hcc(B,CC)
+
+  edit(ICD,9,B,"48")  <= female(B) & (ICD.in_(["2860", "2861"]))
+  edit(ICD,9,B,"112") <= (Ben.age[B] < 18) & (ICD.in_(["4910", "4911", "49120", "49121", "49122",
+                              "4918", "4919", "4920",  "4928",  "496",  
+                              "5181", "5182"]))
+  #IF &AGE < 18 AND &ICD9 IN ("49320", "49321", "49322") 
+  #                                           THEN CC="-1.0";
 
   edit(ICD,0,B,"48")  <= female(B) & (ICD.in_(["D66", "D67"]))
   edit(ICD,0,B,"112") <= (Ben.age[B] < 18) & (ICD.in_(["J410", 
@@ -289,14 +282,10 @@ def load_rules():
 
   # these predicates will be used to generate 
   # more specific predicates like "F0_34"
-  sex_age_range("male",B,L,U) <= male(B) & age(B,A)& (A <= U) & (A > L) 
-  sex_age_range("female",B,L,U) <= female(B) & age(B,A)& (A <= U) & (A > L) 
+  sex_age_range("male",B,L,U) <= male(B) & age(B,A) & (A <= U) & (A > L) 
+  sex_age_range("female",B,L,U) <= female(B) & age(B,A) & (A <= U) & (A > L) 
   sex_age(MF,B,A) <= sex_age_range(MF,B,(A+1),A)
   
-  load_indicators()
-  load_score_concatenators()
-
-def load_indicators():
   indicator(B,'ART_OPENINGS_PRESSURE_ULCER') <=  ben_hcc(B,CC) & ben_hcc(B,CC2) & art_openings_pressure_ulcer(CC,CC2)
   indicator(B,'ASP_SPEC_BACT_PNEUM_PRES_ULC') <=  ben_hcc(B,CC) & ben_hcc(B,CC2) & asp_spec_bact_pneum_pres_ulc(CC,CC2)
   indicator(B,'CANCER_IMMUNE') <=  ben_hcc(B,CC) & ben_hcc(B,CC2) & cancer_immune(CC,CC2)
@@ -329,93 +318,16 @@ def load_indicators():
   indicator(B,'F85_89') <=  sex_age_range('female',B,85,89)
   indicator(B,'F90_94') <=  sex_age_range('female',B,90,94)
   indicator(B,'F95_GT') <=  sex_age_range('female',B,95,99999)
-  indicator(B,'HCC100') <=  ben_hcc(B,'100') 
-  indicator(B,'HCC103') <=  ben_hcc(B,'103') 
-  indicator(B,'HCC104') <=  ben_hcc(B,'104') 
-  indicator(B,'HCC106') <=  ben_hcc(B,'106') 
-  indicator(B,'HCC107') <=  ben_hcc(B,'107') 
-  indicator(B,'HCC108') <=  ben_hcc(B,'108') 
-  indicator(B,'HCC10') <=  ben_hcc(B,'10') 
-  indicator(B,'HCC110') <=  ben_hcc(B,'110') 
-  indicator(B,'HCC111') <=  ben_hcc(B,'111') 
-  indicator(B,'HCC112') <=  ben_hcc(B,'112') 
-  indicator(B,'HCC114') <=  ben_hcc(B,'114') 
-  indicator(B,'HCC115') <=  ben_hcc(B,'115') 
-  indicator(B,'HCC11') <=  ben_hcc(B,'11') 
-  indicator(B,'HCC122') <=  ben_hcc(B,'122') 
-  indicator(B,'HCC124') <=  ben_hcc(B,'124') 
-  indicator(B,'HCC12') <=  ben_hcc(B,'12') 
-  indicator(B,'HCC134') <=  ben_hcc(B,'134') 
-  indicator(B,'HCC135') <=  ben_hcc(B,'135') 
-  indicator(B,'HCC136') <=  ben_hcc(B,'136') 
-  indicator(B,'HCC137') <=  ben_hcc(B,'137') 
-  indicator(B,'HCC138') <=  ben_hcc(B,'138') 
-  indicator(B,'HCC139') <=  ben_hcc(B,'139') 
-  indicator(B,'HCC140') <=  ben_hcc(B,'140') 
-  indicator(B,'HCC141') <=  ben_hcc(B,'141') 
-  indicator(B,'HCC157') <=  ben_hcc(B,'157') 
-  indicator(B,'HCC158') <=  ben_hcc(B,'158') 
-  indicator(B,'HCC159') <=  ben_hcc(B,'159') 
-  indicator(B,'HCC160') <=  ben_hcc(B,'160') 
-  indicator(B,'HCC161') <=  ben_hcc(B,'161') 
-  indicator(B,'HCC162') <=  ben_hcc(B,'162') 
-  indicator(B,'HCC166') <=  ben_hcc(B,'166') 
-  indicator(B,'HCC167') <=  ben_hcc(B,'167') 
-  indicator(B,'HCC169') <=  ben_hcc(B,'169') 
-  indicator(B,'HCC170') <=  ben_hcc(B,'170') 
-  indicator(B,'HCC173') <=  ben_hcc(B,'173') 
-  indicator(B,'HCC176') <=  ben_hcc(B,'176') 
-  indicator(B,'HCC17') <=  ben_hcc(B,'17') 
-  indicator(B,'HCC186') <=  ben_hcc(B,'186') 
-  indicator(B,'HCC188') <=  ben_hcc(B,'188') 
-  indicator(B,'HCC189') <=  ben_hcc(B,'189') 
-  indicator(B,'HCC18') <=  ben_hcc(B,'18') 
-  indicator(B,'HCC19') <=  ben_hcc(B,'19') 
-  indicator(B,'HCC1') <=  ben_hcc(B,'1') 
-  indicator(B,'HCC21') <=  ben_hcc(B,'21') 
-  indicator(B,'HCC22') <=  ben_hcc(B,'22') 
-  indicator(B,'HCC23') <=  ben_hcc(B,'23') 
-  indicator(B,'HCC27') <=  ben_hcc(B,'27') 
-  indicator(B,'HCC28') <=  ben_hcc(B,'28') 
-  indicator(B,'HCC29') <=  ben_hcc(B,'29') 
-  indicator(B,'HCC2') <=  ben_hcc(B,'2') 
-  indicator(B,'HCC33') <=  ben_hcc(B,'33') 
-  indicator(B,'HCC34') <=  ben_hcc(B,'34') 
-  indicator(B,'HCC35') <=  ben_hcc(B,'35') 
-  indicator(B,'HCC39') <=  ben_hcc(B,'39') 
-  indicator(B,'HCC40') <=  ben_hcc(B,'40') 
-  indicator(B,'HCC46') <=  ben_hcc(B,'46') 
-  indicator(B,'HCC47') <=  ben_hcc(B,'47') 
-  indicator(B,'HCC48') <=  ben_hcc(B,'48') 
-  indicator(B,'HCC51') <=  ben_hcc(B,'51') 
-  indicator(B,'HCC52') <=  ben_hcc(B,'52') 
-  indicator(B,'HCC54') <=  ben_hcc(B,'54') 
-  indicator(B,'HCC55') <=  ben_hcc(B,'55') 
-  indicator(B,'HCC57') <=  ben_hcc(B,'57') 
-  indicator(B,'HCC58') <=  ben_hcc(B,'58') 
-  indicator(B,'HCC6') <=  ben_hcc(B,'6') 
-  indicator(B,'HCC70') <=  ben_hcc(B,'70') 
-  indicator(B,'HCC71') <=  ben_hcc(B,'71') 
-  indicator(B,'HCC72') <=  ben_hcc(B,'72') 
-  indicator(B,'HCC73') <=  ben_hcc(B,'73') 
-  indicator(B,'HCC74') <=  ben_hcc(B,'74') 
-  indicator(B,'HCC75') <=  ben_hcc(B,'75') 
-  indicator(B,'HCC76') <=  ben_hcc(B,'76') 
-  indicator(B,'HCC77') <=  ben_hcc(B,'77') 
-  indicator(B,'HCC78') <=  ben_hcc(B,'78') 
-  indicator(B,'HCC79') <=  ben_hcc(B,'79') 
-  indicator(B,'HCC80') <=  ben_hcc(B,'80') 
-  indicator(B,'HCC82') <=  ben_hcc(B,'82') 
-  indicator(B,'HCC83') <=  ben_hcc(B,'83') 
-  indicator(B,'HCC84') <=  ben_hcc(B,'84') 
-  indicator(B,'HCC85') <=  ben_hcc(B,'85') 
-  indicator(B,'HCC86') <=  ben_hcc(B,'86') 
-  indicator(B,'HCC87') <=  ben_hcc(B,'87') 
-  indicator(B,'HCC88') <=  ben_hcc(B,'88') 
-  indicator(B,'HCC8') <=  ben_hcc(B,'8') 
-  indicator(B,'HCC96') <=  ben_hcc(B,'96') 
-  indicator(B,'HCC99') <=  ben_hcc(B,'99') 
-  indicator(B,'HCC9') <=  ben_hcc(B,'9') 
+  hccees = [ 
+        '100', '103', '104', '106', '107', '108', '10', '110', '111', '112', '114', '115', 
+        '11', '122', '124', '12', '134', '135', '136', '137', '138', '139', '140', '141', 
+        '157', '158', '159', '160', '161', '162', '166', '167', '169', '170', '173', '176', 
+        '17', '186', '188', '189', '18', '19', '1', '21', '22', '23', '27', '28', '29', '2', 
+        '33', '34', '35', '39', '40', '46', '47', '48', '51', '52', '54', '55', '57', '58', 
+        '6', '70', '71', '72', '73', '74', '75', '76', '77', '78', '79', '80', '82', '83', 
+        '84', '85', '86', '87', '88', '8', '96', '99', '9']
+  for i in hccees:
+    indicator(B,'HCC' + i ) <=  ben_hcc(B,i) 
   indicator(B,'M0_34') <=  sex_age_range('male',B,0,34)
   indicator(B,'M35_44') <=  sex_age_range('male',B,35,44)
   indicator(B,'M45_54') <=  sex_age_range('male',B,45,54)
@@ -428,6 +340,8 @@ def load_indicators():
   indicator(B,'M85_89') <=  sex_age_range('male',B,85,89)
   indicator(B,'M90_94') <=  sex_age_range('male',B,90,94)
   indicator(B,'M95_GT') <=  sex_age_range('male',B,95,99999)
+
+  # THESE NEED TO CHANGE
   indicator(B,'MCAID_FEMALE0_64') <= medicaid(B) & sex_age_range('female',B,0,64)
   indicator(B,'MCAID_FEMALE65') <=  medicaid(B) & sex_age('female',B,65)
   indicator(B,'MCAID_FEMALE66_69') <=  medicaid(B) & sex_age_range('female',B,66,69)
@@ -443,6 +357,8 @@ def load_indicators():
   indicator(B,'MCAID_MALE75_GT') <=  medicaid(B) & sex_age_range('male',B,75,999)
   indicator(B,'MCAID_Male_Aged') <=  medicaid(B) & ~disabled(B) & female(B)
   indicator(B,'MCAID_Male_Disabled') <=   medicaid(B) & disabled(B) & male(B)
+  # -- UNTIL HERE... need to add NEF65 indicator stuff instead of sex_age_range
+
   indicator(B,'NEM0_34') <=  sex_age_range("male",B,0,34)
   indicator(B,'NEM35_44') <=  sex_age_range("male",B,35,44)
   indicator(B,'NEM45_54') <=  sex_age_range("male",B,45,54)
@@ -483,14 +399,20 @@ def load_indicators():
   indicator(B,'NEF85_89') <=  sex_age_range("female",B,85,89)
   indicator(B,'NEF90_94') <=  sex_age_range("female",B,90,94)
   indicator(B,'NEF95_GT') <=  sex_age_range("female",B,95,999)
-  indicator(B,'Origdis_female65') <=  originally_disabled(B) & indicator(B, )
-  indicator(B,'Origdis_female66_69') <=  originally_disabled(B) & indicator(B, )
-  indicator(B,'Origdis_female70_74') <=  originally_disabled(B) & indicator(B, )
-  indicator(B,'Origdis_female75_GT') <=  originally_disabled(B) & indicator(B, )
-  indicator(B,'Origdis_male65') <=  originally_disabled(B) & indicator(B, )
-  indicator(B,'Origdis_male66_69') <=  originally_disabled(B) & indicator(B, )
-  indicator(B,'Origdis_male70_74') <=  originally_disabled(B) & indicator(B, )
-  indicator(B,'Origdis_male75_GT') <=  originally_disabled(B) & indicator(B, )
+  indicator(B,'Origdis_female65') <=  originally_disabled(B) & indicator(B, 'NEF65')
+  indicator(B,'Origdis_female66_69') <=  originally_disabled(B) & indicator(B, 'NEF66')
+  indicator(B,'Origdis_female66_69') <=  originally_disabled(B) & indicator(B, 'NEF67')
+  indicator(B,'Origdis_female66_69') <=  originally_disabled(B) & indicator(B, 'NEF68')
+  indicator(B,'Origdis_female66_69') <=  originally_disabled(B) & indicator(B, 'NEF69')
+  indicator(B,'Origdis_female70_74') <=  originally_disabled(B) & indicator(B, 'NEF70_74')
+  indicator(B,'Origdis_female75_GT') <=  originally_disabled(B) & sex_age_range("female",B,74,999)
+  indicator(B,'Origdis_male65') <=  originally_disabled(B) & indicator(B, 'NEM65')
+  indicator(B,'Origdis_male66_69') <=  originally_disabled(B) & indicator(B, 'NEM66')
+  indicator(B,'Origdis_male66_69') <=  originally_disabled(B) & indicator(B, 'NEM67')
+  indicator(B,'Origdis_male66_69') <=  originally_disabled(B) & indicator(B, 'NEM68')
+  indicator(B,'Origdis_male66_69') <=  originally_disabled(B) & indicator(B, 'NEM69')
+  indicator(B,'Origdis_male70_74') <=  originally_disabled(B) & indicator(B, 'NEM70_74')
+  indicator(B,'Origdis_male75_GT') <=  originally_disabled(B) & sex_age_range("male",B,74,999)
   indicator(B,'ORIGDS') <= originally_disabled(B) 
   indicator(B,'OriginallyDisabled_Female') <=  originally_disabled(B) & female(B)
   indicator(B,'OriginallyDisabled_Male') <=  originally_disabled(B) & male(B)
@@ -500,6 +422,15 @@ def load_indicators():
   indicator(B,'SEPSIS_ARTIF_OPENINGS') <= ben_hcc(B,CC) & ben_hcc(B,CC2) & sepsis_artif_openings(CC,CC2) 
   indicator(B,'SEPSIS_ASP_SPEC_BACT_PNEUM') <=  ben_hcc(B,CC) & ben_hcc(B,CC2) & sepsis_asp_spec_bact_pneum(CC,CC2)
   indicator(B,'SEPSIS_CARD_RESP_FAIL') <=  ben_hcc(B,CC) & ben_hcc(B,CC2) & sepsis_card_resp_fail(CC,CC2)
+ 
+  # the following 3 lines are plain python 
+  cvars = community_regression()
+  ivars = institutional_regression()
+  nevars = new_enrollee_regression()
+
+  (valid_community_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(cvars)
+  (valid_institutional_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(ivars)
+  (valid_new_enrolle_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(nevars)
 
 load_facts()
 load_rules()
@@ -526,18 +457,5 @@ bob.add_diagnosis(Diagnosis(bob,"A0224",ICDType.TEN))
 jacob = Beneficiary(4,"male","1940824",EntitlementReason.DIB,True)
 
 print("bottom")
-
-def a(query):
-  answer =pyDatalog.ask(query) 
-  if answer != None:
-    return (True, answer.answers)
-  else:
-    return (False,None)
-
-def a2(results):
-  if len(results) > 0:
-    return True
-  else:
-    return False
 
 
