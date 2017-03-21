@@ -3,6 +3,21 @@ from functools import reduce
 from datetime import datetime
 from pyDatalog import pyDatalog
 
+pyDatalog.create_terms("""
+output,Col,Val,score_em,Score,score,Scores,NE,INS,CE,institutional_score,
+new_enrollee_score,community_score,Pair,Coef,coefficient,b,dc,overrides,
+has_cc_that_overrides_this_one,beneficiary_has_hcc,Type,OT,beneficiary_has_cc,cc,CC,CC2,
+ICD,edit,male,B,Diag,Ben,female,medicaid,age,A,old_age_entitled,new_enrollee,D,ben_hcc,
+sepsis_card_resp_fail,cancer_immune,diabetes_chf,chf_copd,chf_renal,copd_card_resp_fail,
+sepsis_pressure_ulcer, sepsis_artif_openings,art_openings_pressure_ulcer, diabetes_chf,
+ copd_asp_spec_bact_pneum,asp_spec_bact_pneum_pres_ulc, sepsis_asp_spec_bact_pneum,
+ schizophrenia_copd,schizophrenia_chf,schizophrenia_seizures,sex_age_range,U,L,disabled,
+originally_disabled,ben_hcc,sex_age,MF,indicator,excised,beneficiary_icd,CC,B,
+valid_community_variables,valid_institutional_variables,valid_new_enrollee_variables,indicator
+""")
+pyDatalog.create_terms("X,Y,Z")
+
+
 def age_as_of(dob,date_as_of):
   return date_as_of.year - dob.year - ((date_as_of.month, date_as_of.day) < (dob.month, dob.day))
 
@@ -27,7 +42,7 @@ class Diagnosis(pyDatalog.Mixin):
     self.codetype = codetype
 
   def __repr__(self): # specifies how to display an Employee
-    return str(beneficiary) + str(self.icdcode) + str(self.codetype)
+    return str(self.beneficiary) + str(self.icdcode) + str(self.codetype)
 
 class Beneficiary(pyDatalog.Mixin):
   def __init__(self,
@@ -131,12 +146,6 @@ def load_hcc_facts():
     for overridee in overridees:
       + overrides(overrider,overridee)
 
-pyDatalog.create_terms('score_em,Score,score,Scores,NE,INS,CE,institutional_score,new_enrollee_score,community_score,Pair,Coef,coefficient,b,dc,overrides,has_cc_that_overrides_this_one,beneficiary_has_hcc,Type,OT,beneficiary_has_cc,cc,CC,CC2,ICD,edit,male,B,Diag,Ben,female,medicaid,age,A,old_age_entitled,new_enrollee,D,ben_hcc')
-
-pyDatalog.create_terms('sepsis_card_resp_fail,cancer_immune,diabetes_chf,chf_copd,chf_renal, copd_card_resp_fail')
-
-pyDatalog.create_terms('sepsis_pressure_ulcer, sepsis_artif_openings, art_openings_pressure_ulcer, diabetes_chf, copd_asp_spec_bact_pneum, asp_spec_bact_pneum_pres_ulc, sepsis_asp_spec_bact_pneum, schizophrenia_copd, schizophrenia_chf, schizophrenia_seizures,sex_age_range,U,L,disabled,originally_disabled,ben_hcc,sex_age,MF,indicator ')
-
 def load_facts():
   load_cc_facts("icd10.txt",0)
   load_cc_facts("icd9.txt",9)
@@ -209,7 +218,6 @@ def institutional_regression():
               "HCC169","HCC170","HCC173","HCC176","HCC186","HCC188","HCC189" ]
   return reg_vars 
 
-pyDatalog.create_terms('excised,beneficiary_icd,CC,B,valid_community_variables,valid_institutional_variables,valid_new_enrollee_variables,indicator')
 
 
 def load_rules():
@@ -422,6 +430,7 @@ def load_rules():
   cvars = community_regression()
   ivars = institutional_regression()
   nevars = new_enrollee_regression()
+  allvars = list(set().union(cvars,ivars,nevars))
 
   (valid_community_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(cvars)
   (valid_institutional_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(ivars)
@@ -437,6 +446,10 @@ def load_rules():
   score(B,"community",Score) <= (community_score[B] == Score)
   score(B,"institutional",Score) <= (institutional_score[B] == Score)
   score(B,"new_enrollee",Score) <= (new_enrollee_score[B] == Score)
+  output(B,Col,Val) <= score(B,Col,Val)
+  output(B,Col,0) <=   Col.in_(allvars) & ~(indicator(B,Col))
+  output(B,Col,1) <= indicator(B,Col)
+  output(B,"sex",Val) <= (Ben.sex[B]==Val)
   
 
 load_facts()
@@ -457,21 +470,21 @@ daniel.add_diagnosis(Diagnosis(daniel,"C163",ICDType.TEN))
 daniel.add_diagnosis(Diagnosis(daniel,"C182",ICDType.TEN))  
 daniel.add_diagnosis(Diagnosis(daniel,"C800",ICDType.TEN))  
 daniel.add_diagnosis(Diagnosis(daniel,"A072",ICDType.TEN))  
+
 bob = Beneficiary(3,"male","20040824",EntitlementReason.DIB,True)
 bob.add_diagnosis(Diagnosis(bob,"A0223",ICDType.TEN))
 bob.add_diagnosis(Diagnosis(bob,"A0224",ICDType.TEN))
+
 jacob = Beneficiary(4,"male","1940824",EntitlementReason.DIB,True)
 
 antonio = Beneficiary(3,"male","20040824",EntitlementReason.DIB,True)
 antonio.add_diagnosis(Diagnosis(antonio,"A0223",ICDType.TEN))
 antonio.add_diagnosis(Diagnosis(antonio,"49320",ICDType.NINE))
 
-
-john = Beneficiary(3,"male","19920824",EntitlementReason.DIB,True)
+john = Beneficiary(5,"male","19920824",EntitlementReason.DIB,True)
 john.add_diagnosis(Diagnosis(john,"A0223",ICDType.TEN))
 john.add_diagnosis(Diagnosis(john,"49320",ICDType.NINE))
 
 ####################################################
 print("bottom")
-
 
