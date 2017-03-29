@@ -160,11 +160,14 @@ The **relvar** X will be populated with the values that make this relation/predi
 
 ## Remaining Items
 
+This code is fresh of the presses.  In the following weeks we plan on adding the following:
+
   * Capture ICD specific upper/lower age limits for executing cost-category edits
   * provide useful wrapper code to run CSV files with a well-known format for beneficiary/diagnosis data
   * provide test harness to show how the SAS code and this code produce the exact same scores for all the models for a large representative data set
   * improve performance by exploring other rules-driven technologies
-    
-    ** rules engine (Rete algorithm)
-    ** planners/solvers
-    ** external prolog with better tabling characteristics
+    * rules engine (Rete algorithm)
+    * planners/solvers/answer-set stuff?
+    * external prolog with better tabling characteristics (XSD?, SWI-PROLOG?)
+  * Refactor to provide an API and SPI for rolling in **other** risk adjustment models (and even different versions of the same model)
+    ![ explanation ](framework.png)
