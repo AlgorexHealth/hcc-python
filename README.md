@@ -33,6 +33,11 @@ These independent variables are either engaged or not, and their associated coef
 
 ![ explanation ](model.png)
 
+As you can see, the model (community in this case) is merely a sum of coefficients.  If a beneficiary and their diagnoses triggers one of these independent variables, it will add an incremental value to their risk score.  That incremental value is the calculated coefficient for that effect.
+
+The following legend gives names to these components:
+
+![ explanation ](legend.png)
 
 ## Usage
 At this time
