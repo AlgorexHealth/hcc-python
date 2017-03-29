@@ -64,7 +64,7 @@ We have used a packade called `pyDatalog` to capture the rules that may trigger 
 ongoing risk score.  For instance,
 
 ```python
-indicator(B,'MCAID_Male_Aged') <=  medicaid(B) & ~disabled(B) & female(B)
+indicator(B,'MCAID_Male_Aged') <=  medicaid(B) & ~disabled(B) & male(B)
 indicator(B,'COPD_ASP_SPEC_BACT_PNEUM') <=  ben_hcc(B,CC) & ben_hcc(B,CC2) & copd_asp_spec_bact_pneum(CC,CC2)
 ```
 
@@ -72,7 +72,14 @@ These two lines of pure python code, are also an embedabble DSL for datalog that
 logical rules that **relate** a beneficiary to this indicator.
 
 You may read these rules as such, (in order):
-  * the MCAID_Male_Aged indicator is **true** for this beneficiary B **if** it is true that this beneficiary is on medicaid `medicaid(B)` **and** that this beneficiary is not disabled `~disabled(B)` **and** 
+  * the MCAID_Male_Aged indicator is **true** for this beneficiary B `indicator(B,'MCAID_Male_Aged')` **if** `<=` it is **true** that this beneficiary is on medicaid `medicaid(B)` **and** that this beneficiary is not disabled `~disabled(B)` **and** this beneficiary is male `male(B)`
+  * the COPD_ASP_SPEC_BACT_PNEUM indicator is true if this beneficiary has two cost categories (CC and CC2) that are related to each other by the sub-rule `copd_asp_spec_bact_pneum(CC,CC2)` (i.e. this sub-rule returns **true**)
+
+For programmers familiar with standard imperative techniques (or even functional), this might seem new as it encapsulates the logic
+of *what* declaratively and eschews an imperative *how* for the datalog engine.  
+
+In the end, we are left with a database (or knowledegebase of facts and rules) which are formal encapsulations of our problem domain. 
+These facts and rules operate to answer queries on our data and 
 
 
 ## Usage
