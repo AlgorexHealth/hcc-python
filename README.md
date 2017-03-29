@@ -54,7 +54,11 @@ their diagnoses", as shown in the following diagram.
 
 ![ explanation ](execution-of-model.png)
 
-Given this abstraction, which is implemented in SAS by using multiplication and addition of numeric variables to represent **falsehood** (zero) and **truth** (any non-zero integer), we have chosen to implement this functionality in a unique way that emphasizes the rules, rather than a more imperative
+Given this abstraction, which is implemented in SAS by using multiplication and
+addition of numeric variables to represent **falsehood** (zero) and **truth**
+(any non-zero integer), we have chosen to implement this functionality in a
+unique way that emphasizes the rules, rather than a more imperative technique
+standard with procedural and object-oriented languages.
 
 
 # Implementation 
@@ -79,20 +83,20 @@ For programmers familiar with standard imperative techniques (or even functional
 of *what* declaratively and eschews an imperative *how* for the datalog engine.  
 
 In the end, we are left with a database (or knowledegebase of facts and rules) which are formal encapsulations of our problem domain. 
-These facts and rules operate to answer queries on our data and 
-
+These facts and rules operate to answer queries on our data.
 
 ## Usage
-At this time
+At this time, this library is provided as a means for an experienced Python programmer to integrate into their codebase.
+Thusly, such a programmer must import this library and be responsible for the de-serialization of their data
+into the Python objects.  These classe (`Beneficiary` and  `Diagnosis`  are the effectivebbbbb
 
 ## Remaining Items
 
-
-
-
-This model is a series of coefficients tied to 
-  * ICD-9 Procedure Codes
-    * HCPC/CPT Procedure Codes
-      * DRG Codes
-
-
+  * Capture ICD specific upper/lower age limits for executing cost-category edits
+  * provide useful wrapper code to run CSV files with a well-known format for beneficiary/diagnosis data
+  * provide test harness to show how the SAS code and this code produce the exact same scores for all the models for a large representative data set
+  * improve performance by exploring other rules-driven technologies
+    
+    ** rules engine (Rete algorithm)
+    ** planners/solvers
+    ** external prolog with better tabling characteristics
