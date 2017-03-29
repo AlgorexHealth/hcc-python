@@ -2,10 +2,11 @@ from enum import Enum,IntEnum
 from functools import reduce
 from datetime import datetime
 from pyDatalog import pyDatalog
+from pyxf import xsb
 
 pyDatalog.create_terms("""
-output,Col,Val,score_em,Score,score,Scores,NE,INS,CE,institutional_score,
-new_enrollee_score,community_score,Pair,Coef,coefficient,b,dc,overrides,
+output,Col,Val,score_em,Score,score,Scores,NE,INS,CE,institutional_score,age_range,
+new_enrollee_score,community_score,Pair,Coef,coefficient,b,dc,overrides,wrap,
 has_cc_that_overrides_this_one,beneficiary_has_hcc,Type,OT,beneficiary_has_cc,cc,CC,CC2,
 ICD,edit,male,B,Diag,Ben,female,medicaid,age,A,old_age_entitled,new_enrollee,D,ben_hcc,
 sepsis_card_resp_fail,cancer_immune,diabetes_chf,chf_copd,chf_renal,copd_card_resp_fail,
@@ -218,8 +219,6 @@ def institutional_regression():
               "HCC169","HCC170","HCC173","HCC176","HCC186","HCC188","HCC189" ]
   return reg_vars 
 
-
-
 def load_rules():
   Ben = Beneficiary
   Diag = Diagnosis
@@ -239,19 +238,19 @@ def load_rules():
   originally_disabled(B) <= (Ben.original_reason_entitlement[B] == EntitlementReason.DIB) & ~(disabled(B))
 
   edit(ICD,9,B,"48")  <= female(B) & (ICD.in_(["2860", "2861"]))
-  edit(ICD,9,B,"112") <= (Ben.age[B] < 18) & \
+  edit(ICD,9,B,"112") <= age(B,A)  & (A < 18) & \
                               (ICD.in_(["4910", "4911", "49120", "49121", "49122",
                                         "4918", "4919", "4920",  "4928",  "496",  
                                         "5181", "5182"]))
   edit(ICD,0,B,"48")  <= female(B) & (ICD.in_(["D66", "D67"]))
-  edit(ICD,0,B,"112") <= (Ben.age[B] < 18) & (ICD.in_(["J410", 
+  edit(ICD,0,B,"112") <= age(B,A)  & (A < 18) & (ICD.in_(["J410", 
                                  "J411", "J418", "J42",  "J430",
                                  "J431", "J432", "J438", "J439", "J440",
                                  "J441", "J449", "J982", "J983"]))
 
   #IF &AGE < 18 AND &ICD9 IN ("49320", "49321", "49322") 
   #                                           THEN CC="-1.0";
-  excised(ICD,9,B) <= (Ben.age[B] < 18) & (ICD.in_(["49320", "49321", "49322"]))
+  excised(ICD,9,B) <= age(B,A)  & (A < 18) & (ICD.in_(["49320", "49321", "49322"]))
 
   beneficiary_icd(B,ICD,Type) <= (Diag.beneficiary[D] == B) & (Diag.icdcode[D]==ICD) & (Diag.codetype[D]==Type) 
   beneficiary_has_cc(B,CC) <= beneficiary_icd(B,ICD,Type)  & edit(ICD,Type,B,CC) & ~(excised(ICD,Type,B))
@@ -285,8 +284,10 @@ def load_rules():
 
   # these predicates will be used to generate 
   # more specific predicates like "F0_34"
-  sex_age_range("male",B,L,U) <= male(B) & age(B,A) & (A <= U) & (A > L) 
-  sex_age_range("female",B,L,U) <= female(B) & age(B,A) & (A <= U) & (A > L) 
+  age_range(B,L,U) <= age(B,A) & (A <= U) & (A > L) 
+  age_range(B,L,-1.0) <= age(B,A) & (A > L) 
+  sex_age_range("male",B,L,U) <= male(B) & age_range(B,L,U)
+  sex_age_range("female",B,L,U) <= female(B) & age_range(B,L,U)
   sex_age(MF,B,A) <= sex_age_range(MF,B,(A+1),A)
   
   indicator(B,'ART_OPENINGS_PRESSURE_ULCER') <=  ben_hcc(B,CC) & ben_hcc(B,CC2) & art_openings_pressure_ulcer(CC,CC2)
@@ -320,7 +321,7 @@ def load_rules():
   indicator(B,'F80_84') <=  sex_age_range('female',B,80,84)
   indicator(B,'F85_89') <=  sex_age_range('female',B,85,89)
   indicator(B,'F90_94') <=  sex_age_range('female',B,90,94)
-  indicator(B,'F95_GT') <=  sex_age_range('female',B,95,99999)
+  indicator(B,'F95_GT') <=  sex_age_range('female',B,95,-1.0)
   hccees = [ 
         '100', '103', '104', '106', '107', '108', '10', '110', '111', '112', '114', '115', 
         '11', '122', '124', '12', '134', '135', '136', '137', '138', '139', '140', '141', 
@@ -342,14 +343,14 @@ def load_rules():
   indicator(B,'M80_84') <=  sex_age_range('male',B,80,84)
   indicator(B,'M85_89') <=  sex_age_range('male',B,85,89)
   indicator(B,'M90_94') <=  sex_age_range('male',B,90,94)
-  indicator(B,'M95_GT') <=  sex_age_range('male',B,95,99999)
+  indicator(B,'M95_GT') <=  sex_age_range('male',B,95,-1.0)
 
   # THESE NEED TO CHANGE
   indicator(B,'MCAID_FEMALE0_64') <= medicaid(B) & sex_age_range('female',B,0,64)
   indicator(B,'MCAID_FEMALE65') <=  medicaid(B) & sex_age('female',B,65)
   indicator(B,'MCAID_FEMALE66_69') <=  medicaid(B) & sex_age_range('female',B,66,69)
   indicator(B,'MCAID_FEMALE70_74') <= medicaid(B) & sex_age_range('female',B,70,74)
-  indicator(B,'MCAID_FEMALE75_GT') <=  medicaid(B) & sex_age_range('female',B,75,999)
+  indicator(B,'MCAID_FEMALE75_GT') <=  medicaid(B) & sex_age_range('female',B,75,-1.0)
   indicator(B,'MCAID_Female_Aged') <=   medicaid(B) & ~disabled(B) & female(B)
   indicator(B,'MCAID_Female_Disabled') <=  medicaid(B) & disabled(B) & male(B)
   indicator(B,'MCAID') <= medicaid(B) 
@@ -357,8 +358,8 @@ def load_rules():
   indicator(B,'MCAID_MALE65') <=  medicaid(B) & sex_age('male',B,65)
   indicator(B,'MCAID_MALE66_69') <=  medicaid(B) & sex_age_range('male',B,66,69)
   indicator(B,'MCAID_MALE70_74') <= medicaid(B) & sex_age_range('male',B,70,74)
-  indicator(B,'MCAID_MALE75_GT') <=  medicaid(B) & sex_age_range('male',B,75,999)
-  indicator(B,'MCAID_Male_Aged') <=  medicaid(B) & ~disabled(B) & female(B)
+  indicator(B,'MCAID_MALE75_GT') <=  medicaid(B) & sex_age_range('male',B,75,-1.0)
+  indicator(B,'MCAID_Male_Aged') <=  medicaid(B) & ~disabled(B) & male(B)
   indicator(B,'MCAID_Male_Disabled') <=   medicaid(B) & disabled(B) & male(B)
   # -- UNTIL HERE... need to add NEF65 indicator stuff instead of sex_age_range
 
@@ -381,7 +382,7 @@ def load_rules():
   indicator(B,'NEM80_84') <=  sex_age_range("male",B,80,84)
   indicator(B,'NEM85_89') <=  sex_age_range("male",B,85,89)
   indicator(B,'NEM90_94') <=  sex_age_range("male",B,90,94)
-  indicator(B,'NEM95_GT') <=  sex_age_range("male",B,95,999)
+  indicator(B,'NEM95_GT') <=  sex_age_range("male",B,95,-1.0)
   indicator(B,'NEF0_34') <=  sex_age_range("female",B,0,34)
   indicator(B,'NEF35_44') <=  sex_age_range("female",B,35,44)
   indicator(B,'NEF45_54') <=  sex_age_range("female",B,45,54)
@@ -401,21 +402,21 @@ def load_rules():
   indicator(B,'NEF80_84') <=  sex_age_range("female",B,80,84)
   indicator(B,'NEF85_89') <=  sex_age_range("female",B,85,89)
   indicator(B,'NEF90_94') <=  sex_age_range("female",B,90,94)
-  indicator(B,'NEF95_GT') <=  sex_age_range("female",B,95,999)
+  indicator(B,'NEF95_GT') <=  sex_age_range("female",B,95,-1.0)
   indicator(B,'Origdis_female65') <=  originally_disabled(B) & indicator(B, 'NEF65')
   indicator(B,'Origdis_female66_69') <=  originally_disabled(B) & indicator(B, 'NEF66')
   indicator(B,'Origdis_female66_69') <=  originally_disabled(B) & indicator(B, 'NEF67')
   indicator(B,'Origdis_female66_69') <=  originally_disabled(B) & indicator(B, 'NEF68')
   indicator(B,'Origdis_female66_69') <=  originally_disabled(B) & indicator(B, 'NEF69')
   indicator(B,'Origdis_female70_74') <=  originally_disabled(B) & indicator(B, 'NEF70_74')
-  indicator(B,'Origdis_female75_GT') <=  originally_disabled(B) & sex_age_range("female",B,74,999)
+  indicator(B,'Origdis_female75_GT') <=  originally_disabled(B) & sex_age_range("female",B,74,-1.0)
   indicator(B,'Origdis_male65') <=  originally_disabled(B) & indicator(B, 'NEM65')
   indicator(B,'Origdis_male66_69') <=  originally_disabled(B) & indicator(B, 'NEM66')
   indicator(B,'Origdis_male66_69') <=  originally_disabled(B) & indicator(B, 'NEM67')
   indicator(B,'Origdis_male66_69') <=  originally_disabled(B) & indicator(B, 'NEM68')
   indicator(B,'Origdis_male66_69') <=  originally_disabled(B) & indicator(B, 'NEM69')
   indicator(B,'Origdis_male70_74') <=  originally_disabled(B) & indicator(B, 'NEM70_74')
-  indicator(B,'Origdis_male75_GT') <=  originally_disabled(B) & sex_age_range("male",B,74,999)
+  indicator(B,'Origdis_male75_GT') <=  originally_disabled(B) & sex_age_range("male",B,74,-1.0)
   indicator(B,'ORIGDS') <= originally_disabled(B) 
   indicator(B,'OriginallyDisabled_Female') <=  originally_disabled(B) & female(B)
   indicator(B,'OriginallyDisabled_Male') <=  originally_disabled(B) & male(B)
@@ -487,4 +488,110 @@ john.add_diagnosis(Diagnosis(john,"49320",ICDType.NINE))
 
 ####################################################
 print("bottom")
+def gen(x):
+  for i in range(0,x):
+    daniel = Beneficiary(1,"male","19740824",EntitlementReason.DIB)
+    daniel.add_diagnosis(Diagnosis(daniel,"A0223",ICDType.TEN))  # 51
+    daniel.add_diagnosis(Diagnosis(daniel,"A0224",ICDType.TEN))  # 52
+    daniel.add_diagnosis(Diagnosis(daniel,"D66",ICDType.TEN))  
+    daniel.add_diagnosis(Diagnosis(daniel,"C163",ICDType.TEN))  
+    daniel.add_diagnosis(Diagnosis(daniel,"C163",ICDType.TEN))  
+    daniel.add_diagnosis(Diagnosis(daniel,"C182",ICDType.TEN))  
+    daniel.add_diagnosis(Diagnosis(daniel,"C800",ICDType.TEN))  
+    daniel.add_diagnosis(Diagnosis(daniel,"A072",ICDType.TEN))  
+    yield daniel 
+
+def gen_ar(x):
+  a = []
+  for i in range(0,x):
+    daniel = Beneficiary(1,"male","19740824",EntitlementReason.DIB)
+    daniel.add_diagnosis(Diagnosis(daniel,"A0223",ICDType.TEN))  # 51
+    daniel.add_diagnosis(Diagnosis(daniel,"A0224",ICDType.TEN))  # 52
+    daniel.add_diagnosis(Diagnosis(daniel,"D66",ICDType.TEN))  
+    daniel.add_diagnosis(Diagnosis(daniel,"C163",ICDType.TEN))  
+    daniel.add_diagnosis(Diagnosis(daniel,"C163",ICDType.TEN))  
+    daniel.add_diagnosis(Diagnosis(daniel,"C182",ICDType.TEN))  
+    daniel.add_diagnosis(Diagnosis(daniel,"C800",ICDType.TEN))  
+    daniel.add_diagnosis(Diagnosis(daniel,"A072",ICDType.TEN))  
+    a.append(daniel)
+  return a
+
+def x(g):
+  oo = gen_ar(g)
+  a= (score(Z,X,Y) & (Z.in_(oo)))
+  z = list(a)
+  print(z)
+  print(len(z))
+  return z
+  
+def y2(g):
+  z = []
+  o = gen_ar(g)
+  for x in o:
+    a = score(x,X,Y)
+    z.append(a)
+  print(z)
+  print(len(z))
+  return len(z)
+
+def y(g):
+  z = []
+  o = gen(g)
+  for x in o:
+    a = score(x,X,Y)
+    z.append(a)
+  print(z)
+  print(len(z))
+  return len(z)
+
+def z(g):
+  oo = gen(g)
+  for i in oo:
+    wrap(id(i),X,Y) <= score(i,X,Y)
+  a = wrap(Z,X,Y)
+  z = list(a)
+  print(z)
+  pyDatalog.retract_fact("wrap")
+  print(len(z))
+  return len(z)
+
+pyDatalog.create_terms("me,Q")
+
+def x2(g):
+  oo = gen_ar(g)
+  (me[1]==Y) <= Y.in_(oo)
+  a = (score(Y,X,Q) & (me[1]==Y))
+  z = list(a)
+  print(z)
+  print(len(z))
+  return len(z)
+
+import timeit
+
+
+#  class Beneficiary(pyDatalog.Mixin):
+#    def __init__(self,
+#                hicno,sex,dob,
+#                original_reason_entitlement=EntitlementReason.OASI,
+#                medicaid=False,
+#                newenrollee_medicaid=False,):
+#      super().__init__()
+#      self.hicno = hicno
+#      self.sex = sex
+#      self.dob = datetime.strptime(dob,"%Y%m%d")
+#      self.age = age_as_of(self.dob,datetime.now())
+#      self.medicaid = medicaid
+#      self.newenrollee_medicaid = newenrollee_medicaid
+#      self.original_reason_entitlement = original_reason_entitlement
+#      self.diagnoses = []
+def out(bz):
+  for b in bz:
+    ar = map(str,[b.hicno,b.sex,b.age,b.dob,b.medicaid,b.newenrollee_medicaid,int(b.original_reason_entitlement)])
+    print("beneficiary(", ",".join(ar ), ")")
+    for d in b.diagnoses:
+      ar2 = map(str,[b.hicno,d.icdcode,int(d.codetype)])
+      print("diagnosis(", ",".join(ar2 ), ")")
+
+
+print(cc(X,Y,Z))
 
