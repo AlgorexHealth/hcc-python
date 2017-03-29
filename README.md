@@ -68,6 +68,11 @@ indicator(B,'MCAID_Male_Aged') <=  medicaid(B) & ~disabled(B) & female(B)
 indicator(B,'COPD_ASP_SPEC_BACT_PNEUM') <=  ben_hcc(B,CC) & ben_hcc(B,CC2) & copd_asp_spec_bact_pneum(CC,CC2)
 ```
 
+These two lines of pure python code, are also an embedabble DSL for datalog that capture the
+logical rules that **relate** a beneficiary to this indicator.
+
+You may read these rules as such, (in order):
+  * the MCAID_Male_Aged indicator is **true** for this beneficiary B **if** it is true that this beneficiary is on medicaid `medicaid(B)` **and** that this beneficiary is not disabled `~disabled(B)` **and** 
 
 
 ## Usage
