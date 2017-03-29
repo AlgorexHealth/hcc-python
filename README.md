@@ -82,6 +82,22 @@ You may read these rules as such, (in order):
 For programmers familiar with standard imperative techniques (or even functional), this might seem new as it encapsulates the logic
 of *what* declaratively and eschews an imperative *how* for the datalog engine.  
 
+This effective severing of knowledge from implemenation can yield surprising smaller code which may have higher maintenance characteristics.
+Consider these rules which effectively capture the notion of hierarchilaization (the 'H' in HCC):
+
+```python
+  beneficiary_icd(B,ICD,Type) <= (Diag.beneficiary[D] == B) & (Diag.icdcode[D]==ICD) & (Diag.codetype[D]==Type) 
+  beneficiary_has_cc(B,CC) <= beneficiary_icd(B,ICD,Type)  & edit(ICD,Type,B,CC) & ~(excised(ICD,Type,B))
+  beneficiary_has_cc(B,CC) <= beneficiary_icd(B,ICD,Type)  & \
+    cc(ICD,CC,Type) & ~(edit(ICD,Type,B,CC2)) & ~(excised(ICD,Type,B))
+
+  has_cc_that_overrides_this_one(B,CC) <=  beneficiary_has_cc(B,OT)  & overrides(OT,CC)
+  beneficiary_has_hcc(B,CC) <= beneficiary_has_cc(B,CC) & ~( has_cc_that_overrides_this_one(B,CC))
+```
+
+Though these rules depend on facts (**cc** and **Beneficiary** and **Diagnosis**) and other rules (`excised,edit,overrides`), 
+these few lines capture all the logic in relating beneficiaries to ICDs, and to cost categories, and hierarchical cost categories.
+
 In the end, we are left with a database (or knowledegebase of facts and rules) which are formal encapsulations of our problem domain. 
 These facts and rules operate to answer queries on our data.
 
