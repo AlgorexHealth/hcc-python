@@ -104,7 +104,42 @@ These facts and rules operate to answer queries on our data.
 ## Usage
 At this time, this library is provided as a means for an experienced Python programmer to integrate into their codebase.
 Thusly, such a programmer must import this library and be responsible for the de-serialization of their data
-into the Python objects.  These classe (`Beneficiary` and  `Diagnosis`  are the effectivebbbbb
+into the Python objects.  These classes (`Beneficiary` and  `Diagnosis`) are the effective API of this package, and their code is shown
+here to show how simple they are, and what little data is needed by the HCC indicator set to trigger these coefficients:
+
+```python
+class Diagnosis(pyDatalog.Mixin):
+  def __init__(self,
+              beneficiary,
+              icdcode,
+              codetype=ICDType.NINE):
+    super().__init__()
+    self.beneficiary = beneficiary
+    self.icdcode = icdcode
+    self.codetype = codetype
+
+  def __repr__(self): # specifies how to display an Employee
+    return str(self.beneficiary) + str(self.icdcode) + str(self.codetype)
+
+class Beneficiary(pyDatalog.Mixin):
+  def __init__(self,
+              hicno,sex,dob,
+              original_reason_entitlement=EntitlementReason.OASI,
+              medicaid=False,
+              newenrollee_medicaid=False,):
+    super().__init__()
+    self.hicno = hicno
+    self.sex = sex
+    self.dob = datetime.strptime(dob,"%Y%m%d")
+    self.age = age_as_of(self.dob,datetime.now())
+    self.medicaid = medicaid
+    self.newenrollee_medicaid = newenrollee_medicaid
+    self.original_reason_entitlement = original_reason_entitlement
+    self.diagnoses = []
+
+```
+
+
 
 ## Remaining Items
 
