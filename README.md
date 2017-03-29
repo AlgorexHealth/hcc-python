@@ -138,7 +138,24 @@ class Beneficiary(pyDatalog.Mixin):
     self.diagnoses = []
 
 ```
+The key takeaway of this is that these objects are **automatically** integrated into pyDatalog as **facts** (the ground terms
+for a logical set of clauses).  As a Python programmer creates these objects, they become available to querying by 
+the other high-level API, the `score` datalog rule:
 
+```python
+  score(B,"community",Score) <= (community_score[B] == Score)
+  score(B,"institutional",Score) <= (institutional_score[B] == Score)
+  score(B,"new_enrollee",Score) <= (new_enrollee_score[B] == Score)
+```
+Though we show the **definition** of these rules above, the acutal usage would be 
+to call the score directly from your code:
+```
+pyDatalog.create_terms("X")
+for b in beneficiary_list:
+	score(b,"community",X)  # where b is just the Beneficiary object, "community" is one of the three models you want scored, and X is a relvar
+```
+
+The **relvar** X will be populated with the values that make this relation/predicate true, that is to say, the score.
 
 
 ## Remaining Items
