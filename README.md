@@ -13,14 +13,26 @@ being published in SAS:
 
 Our hope with this repository is to engage the community by providing a free version of this algorithm in Python (specifically Python3).
 
+This repository is **not** a means by which to generate a linear regression model.  It is instead the code to run 
+the pre-existing HCC model (which had been generated against a national medicare population) against a list of beneficiaries and their diagnoses.
+
 ## Contents 
 This repository contains the `hcc.py` library which implements the HCC summing algorithm. It also contains a mapping from ICD codes (both 9 and 10) to code categories, and mappings of code categories over others (called hierarchies).   All of these data files must be present to work properly.
 
 Other files in this repository are expository (pngs, reference SAS code, and jupyter notebooks).
 
 In summary, the following files are critical for running HCC on your own using python.
+  * hcc.py  
+  * icd10.txt 
+  * icd9.txt 
+  * coefficients.txt
 
 ## Implementation
+The HCC Risk Adjustment algorithm is a linear regression model summing hundreds of independent variables to a single dependent variable called a risk score.
+These independent variables are either engaged or not, and their associated coefficients are either added to the ongoing sum or not.  We show this diagramatically as such:
+
+![ explanation ](model.png)
+
 
 ## Usage
 At this time
