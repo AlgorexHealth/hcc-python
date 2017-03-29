@@ -27,7 +27,7 @@ In summary, the following files are critical for running HCC on your own using p
   * icd9.txt 
   * coefficients.txt
 
-## Implementation
+## Background
 The HCC Risk Adjustment algorithm is a linear regression model summing hundreds of independent variables to a single dependent variable called a risk score.
 These independent variables are either engaged or not, and their associated coefficients are either added to the ongoing sum or not.  We show this diagramatically as such:
 
@@ -38,6 +38,14 @@ As you can see, the model (community in this case) is merely a sum of coefficien
 The following legend gives names to these components:
 
 ![ explanation ](legend.png)
+
+To reiterate but in the language of the diagram and this legend, these models are a collection of indicator/coefficient pairs.  An `indicator` is a predicate function, i.e. a function that returns either true or false.  If the function returns true, then the coefficient is added to the running total that is this patient/beneficiary's risk score.  Each model is a *different* collection of indicator/coefficient pairs that are relevant to the model's calculation (thus, the **new-enrollee model** only uses demographic variables for its indicator functions and not diagnoses).  As stated, an indicator function is a predicate function (sometimes called an indicator or dummy variable in statistics parlance), but what is it a function of?  The answer is of a beneficiary and their diagnoses, as shown in the following diagram. 
+
+
+![ explanation ](execution-of-model.png)
+
+# Implementation 
+
 
 ## Usage
 At this time
