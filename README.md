@@ -39,12 +39,35 @@ The following legend gives names to these components:
 
 ![ explanation ](legend.png)
 
-To reiterate but in the language of the diagram and this legend, these models are a collection of indicator/coefficient pairs.  An `indicator` is a predicate function, i.e. a function that returns either true or false.  If the function returns true, then the coefficient is added to the running total that is this patient/beneficiary's risk score.  Each model is a *different* collection of indicator/coefficient pairs that are relevant to the model's calculation (thus, the **new-enrollee model** only uses demographic variables for its indicator functions and not diagnoses).  As stated, an indicator function is a predicate function (sometimes called an indicator or dummy variable in statistics parlance), but what is it a function of?  The answer is of a beneficiary and their diagnoses, as shown in the following diagram. 
+To reiterate but in the language of the diagram and this legend, these models
+are a collection of indicator/coefficient pairs.  An `indicator` is a predicate
+function, i.e. a function that returns either true or false.  If the function
+returns true, then the coefficient is added to the running total that is this
+patient/beneficiary's risk score.  Each model is a *different* collection of
+indicator/coefficient pairs that are relevant to the model's calculation (thus,
+the **new-enrollee model** only uses demographic variables for its indicator
+functions and not diagnoses).  As stated, an indicator function is a predicate
+function (sometimes called an indicator or dummy variable in statistics
+parlance), but what is it a function of?  The answer is "of a beneficiary and
+their diagnoses", as shown in the following diagram. 
 
 
 ![ explanation ](execution-of-model.png)
 
+Given this abstraction, which is implemented in SAS by using multiplication and addition of numeric variables to represent **falsehood** (zero) and **truth** (any non-zero integer), we have chosen to implement this functionality in a unique way that emphasizes the rules, rather than a more imperative
+
+
 # Implementation 
+
+## Abstract Rules
+We have used a packade called `pyDatalog` to capture the rules that may trigger an indicator function to contribute its coefficient to the
+ongoing risk score.  For instance,
+
+```python
+indicator(B,'MCAID_Male_Aged') <=  medicaid(B) & ~disabled(B) & female(B)
+indicator(B,'COPD_ASP_SPEC_BACT_PNEUM') <=  ben_hcc(B,CC) & ben_hcc(B,CC2) & copd_asp_spec_bact_pneum(CC,CC2)
+```
+
 
 
 ## Usage
