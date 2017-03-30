@@ -89,7 +89,7 @@ For programmers familiar with standard imperative techniques (or even functional
 of *what* declaratively and eschews an imperative *how* for the datalog engine.  
 
 This effective severing of knowledge from implemenation can yield surprising smaller code which may have higher maintenance characteristics.
-Consider these rules which effectively capture the notion of hierarchilaization (the 'H' in HCC):
+Consider these rules which effectively capture the notion of hierarchicalization (the 'H' in HCC):
 
 ```python
   beneficiary_icd(B,ICD,Type) <= (Diag.beneficiary[D] == B) & (Diag.icdcode[D]==ICD) & (Diag.codetype[D]==Type) 
@@ -166,7 +166,7 @@ The **relvar** X will be populated with the values that make this relation/predi
 
 ## Remaining Items
 
-This code is fresh of the presses.  In the following weeks we plan on adding the following:
+This code is fresh off the presses.  In the following weeks we plan on adding the following:
 
   * Capture ICD specific upper/lower age limits for executing cost-category edits
   * provide useful wrapper code to run CSV files with a well-known format for beneficiary/diagnosis data
