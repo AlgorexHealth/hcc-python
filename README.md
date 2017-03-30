@@ -155,7 +155,7 @@ the other high-level API, the `score` datalog rule:
 ```
 Though we show the **definition** of these rules above, the acutal usage would be 
 to call the score directly from your code:
-```
+```python
 pyDatalog.create_terms("X")
 for b in beneficiary_list:
 	score(b,"community",X)  # where b is just the Beneficiary object, "community" is one of the three models you want scored, and X is a relvar
