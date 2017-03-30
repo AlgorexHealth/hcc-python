@@ -40,7 +40,13 @@ The following legend gives names to these components:
 ![ explanation ](legend.png)
 
 To reiterate but in the language of the diagram and this legend, these models
-are a collection of indicator/coefficient pairs.  An `indicator` is a predicate
+are a collection of indicator/coefficient pairs.  
+```
+model  := [ <indicator-coefficient-pair> ]+
+indicator-coefficient-pair  := ( <indicator-functionN>,  <coefficientN>)
+```
+
+An `indicator` is a predicate
 function, i.e. a function that returns either true or false.  If the function
 returns true, then the coefficient is added to the running total that is this
 patient/beneficiary's risk score.  Each model is a *different* collection of
