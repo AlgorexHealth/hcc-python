@@ -2,6 +2,7 @@ from enum import Enum,IntEnum
 from functools import reduce
 from datetime import datetime
 from pyDatalog import pyDatalog
+import os
 
 pyDatalog.create_terms("""
 output,Col,Val,score_em,Score,score,Scores,NE,INS,CE,institutional_score,age_range,
@@ -84,7 +85,8 @@ def load_diagnostic_category_facts():
       + dc(dcE,ccE)
 
 def load_coefficients(f):
-  file = open(f, 'r')                                     
+  dir = os.path.dirname(__file__)
+  file = open(os.path.join(dir,f), 'r')                                     
   for line in file:
     vals = list(map(lambda s: s.strip(),line.split(",")))
     label,coeff = vals
@@ -92,7 +94,8 @@ def load_coefficients(f):
   + coefficient('starting',0.00)
 
 def load_cc_facts(f,icdcodetype):
-  file = open(f, 'r')                                     
+  dir = os.path.dirname(__file__)
+  file = open(os.path.join(dir,f), 'r')                                     
   for line in file:
     vals = line.split()
     if len(vals) == 2:
@@ -147,6 +150,7 @@ def load_hcc_facts():
       + overrides(overrider,overridee)
 
 def load_facts():
+  
   load_cc_facts("icd10.txt",0)
   load_cc_facts("icd9.txt",9)
   load_hcc_facts()
