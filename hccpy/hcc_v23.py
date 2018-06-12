@@ -5,7 +5,7 @@ from pyDatalog import pyDatalog
 
 pyDatalog.create_terms("""
 output,Col,Val,score_em,Score,score,Scores,NE,INS,CE,institutional_score,age_range,
-new_enrollee_score,community_score,Pair,Coef,coefficient,b,dc,overrides,wrap,
+new_enrollee_score,community_score,community_disabled, Pair,Coef,coefficient,b,dc,overrides,wrap,
 has_cc_that_overrides_this_one,beneficiary_has_hcc,Type,OT,beneficiary_has_cc,cc,CC,CC2,
 ICD,edit,male,B,Diag,Ben,female,medicaid,age,A,old_age_entitled,new_enrollee,D,ben_hcc,
 sepsis_card_resp_fail,cancer_immune,diabetes_chf,chf_copd,chf_renal,copd_card_resp_fail,
@@ -13,7 +13,7 @@ sepsis_pressure_ulcer, sepsis_artif_openings,art_openings_pressure_ulcer, diabet
  copd_asp_spec_bact_pneum,asp_spec_bact_pneum_pres_ulc, sepsis_asp_spec_bact_pneum,
  schizophrenia_copd,schizophrenia_chf,schizophrenia_seizures,sex_age_range,U,L,disabled,
 originally_disabled,ben_hcc,sex_age,MF,indicator,excised,beneficiary_icd,CC,B,
-valid_community_variables,valid_institutional_variables,valid_new_enrollee_variables,indicator,
+valid_community_variables,valid_community_disabled_variables,valid_institutional_variables,valid_new_enrollee_variables,indicator,
 copd_cf, substanceabuse_psychiatric,disabled_substanceabuse_psychiatric, psychiatric,  ischemic_chf, respiratorydeps_codp, copd_pneum_d, schizophrenia_copd, 
 schizophrenia_chf, chizonphrenia_seizures, longterm_medicaid, renal_chf, arrthmia_chf
 """)
@@ -219,7 +219,7 @@ def community_disabled_regression():
 
 
 def institutional_regression():
-  reg_vars = agesexva + agesexvad + hccs + ["INS_CHF_COPD",                                 0.159
+  reg_vars = agesexva + agesexvad + hccs + ["INS_CHF_COPD",
             "COPD_CARD_RESP_FAIL",       
             "SEPSIS_PRESSURE_ULCER",     
             "SEPSIS_ARTIF_OPENINGS",     
@@ -452,17 +452,15 @@ def load_rules():
   indicator(B,'SEPSIS_CARD_RESP_FAIL') <=  ben_hcc(B,CC) & ben_hcc(B,CC2) & sepsis_card_resp_fail(CC,CC2)
  
   # the following 3 lines are plain python 
-  cvars = community_regression()
+  cvars = community_aged_regression()
   ivars = institutional_regression()
   cdvars = community_disabled_regression()
-  allvars = list(set().union(cvars,ivars,nevars))
+  allvars = list(set().union(cvars,ivars, cdvars))
 
   (valid_community_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(cvars)
+  (valid_community_disabled_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(cdvars)
   (valid_institutional_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(ivars)
-  (valid_new_enrollee_variables[B] == concat_(CC,key=CC,sep=',')) <= indicator(B,CC) & CC.in_(nevars)
 
-  (new_enrollee_score[B] == sum_(Coef,key=Coef)) <=  indicator(B,CC) \
-                                                & CC.in_(nevars) & coefficient("NE_"+CC,Coef)
   (institutional_score[B] == sum_(Coef,key=Coef)) <=  indicator(B,CC) \
                                                 & CC.in_(ivars) & coefficient("INS_"+CC,Coef)
   (community_score[B] == sum_(Coef,key=Coef)) <=  indicator(B,CC) \
@@ -470,7 +468,7 @@ def load_rules():
   (community_disabled[B] == sum_(Coef,key=Coef)) <= indicator(B,CC) \
                                                 & CC.in_(cdvars) & coefficient("CE_"+CC,Coef)
   score(B,"community",Score) <= (community_score[B] == Score)
-  score(B,"community_disabled",Score) <= (community__disabled_score[B] == Score)
+  score(B,"community_disabled",Score) <= (community_disabled[B] == Score)
   score(B,"institutional",Score) <= (institutional_score[B] == Score)
   output(B,Col,Val) <= score(B,Col,Val)
   output(B,Col,0) <=   Col.in_(allvars) & ~(indicator(B,Col))
