@@ -1,2 +1,2 @@
-from hcc import * 
-from hcclabels import *
+from hccpy.hcc import *
+from hccpy.hcclables import *
