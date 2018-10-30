@@ -312,7 +312,7 @@ def load_rules():
   indicator(B,'DISABLED_HCC6') <=  ben_hcc(B,'6') & disabled(B)
   indicator(B,'DISABLED_HCC77') <=  ben_hcc(B,'77') & disabled(B)
   indicator(B,'DISABLED_HCC85') <=  ben_hcc(B,'85') & disabled(B)
-  indicator(B,'DISABLED_HCC85') <=  ben_hcc(B,CC) & dc(CC,'pressure_ulcer') & disabled(B)
+  indicator(B,'DISABLED_PRESSURE_ULCER') <=  ben_hcc(B,CC) & dc(CC,'pressure_ulcer') & disabled(B)
   indicator(B,'F0_34') <=  sex_age_range('female',B,0,34)
   indicator(B,'F35_44') <=  sex_age_range('female',B,35,44)
   indicator(B,'F45_54') <=  sex_age_range('female',B,45,54)
@@ -454,6 +454,7 @@ def load_rules():
   output(B,Col,0) <=   Col.in_(allvars) & ~(indicator(B,Col))
   output(B,Col,1) <= indicator(B,Col)
   output(B,"sex",Val) <= (Ben.sex[B]==Val)
+  output(B,"age",Val) <= age(B,Val)
   
 
 load_facts()
