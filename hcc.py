@@ -355,7 +355,7 @@ def load_rules():
   indicator(B,'MCAID_FEMALE70_74') <= medicaid(B) & sex_age_range('female',B,70,74)
   indicator(B,'MCAID_FEMALE75_GT') <=  medicaid(B) & sex_age_range('female',B,75,-1.0)
   indicator(B,'MCAID_Female_Aged') <=   medicaid(B) & ~disabled(B) & female(B)
-  indicator(B,'MCAID_Female_Disabled') <=  medicaid(B) & disabled(B) & male(B)
+  indicator(B,'MCAID_Female_Disabled') <=  medicaid(B) & disabled(B) & female(B)
   indicator(B,'MCAID') <= medicaid(B) 
   indicator(B,'MCAID_MALE0_64') <= medicaid(B) & sex_age_range('male',B,0,64)
   indicator(B,'MCAID_MALE65') <=  medicaid(B) & sex_age('male',B,65)
